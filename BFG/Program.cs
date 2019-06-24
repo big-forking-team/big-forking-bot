@@ -92,18 +92,24 @@ namespace BFG
                         switch (a.Action)
                         {
                             case "kick":
+                                List<string> kmen = new List<string>();
                                 foreach (var u in a.Users)
                                 {
                                     
                                     await u.KickAsync(a.Reason);
+                                    kmen.Add(u.Mention);
                                 }
+                                await chan.SendMessageAsync("Kicked Users: " + string.Join(' ', kmen));
                                 break;
                             case "ban":
+                                List<string> bmen = new List<string>();
                                 foreach (var u in a.Users)
                                 {
                                     
                                     await u.BanAsync(0, a.Reason);
+                                    bmen.Add(u.Mention);
                                 }
+                                await chan.SendMessageAsync("Banned Users: " + string.Join(' ', bmen));
                                 break;
                         }
                         
