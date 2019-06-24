@@ -18,12 +18,20 @@ namespace BFG
         });
         public bool runn = true;
         public string[] cfgar = new string[6];
+        public List<List<string>> gset = new List<List<string>>();
         public static void Main(string[] args)
             => new Program().MainAsync().GetAwaiter().GetResult();
 
         public async Task MainAsync()
         {
-            
+            if (!Directory.Exists("gcfg"))
+            {
+                Directory.CreateDirectory("gcfg");
+            }
+            if (!Directory.Exists("ucfg"))
+            {
+                Directory.CreateDirectory("ucfg");
+            }
             if (File.Exists("config.cfg"))
             {
                 cfgar = await File.ReadAllLinesAsync("config.cfg");
@@ -36,8 +44,18 @@ namespace BFG
                 Console.WriteLine("invalid config");
                 return;
             }
+            DirectoryInfo dir = new DirectoryInfo("gcfg");
+            FileInfo[] fdir = dir.GetFiles();
+            foreach (var f in fdir)
+            {
+                string[] g = File.ReadAllLines(f.FullName);
+                List<string> h = g.ToList();
+                gset.Add(h);
+                
+            }
             client.Log += Client_Log;
             client.MessageReceived += Client_MessageReceived;
+            client.GuildAvailable += Client_GuildAvailable;
             await client.LoginAsync(TokenType.Bot, cfgar[0]);
             await client.StartAsync();
             
@@ -48,15 +66,59 @@ namespace BFG
             await client.SetStatusAsync(UserStatus.Invisible);
         }
 
+        private async Task Client_GuildAvailable(SocketGuild guild)
+        {
+            foreach (var l in gset)
+            {
+                if (l[0] == guild.Id.ToString())
+                {
+                    return;
+                }
+            }
+            List<string> h = new List<string>();
+            h.Add(guild.Id.ToString());
+            h.Add(cfgar[1]);
+            gset.Add(h);
+            try
+            {
+                
+                await File.WriteAllLinesAsync("gcfg\\" + h[0] + ".cfg", h);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
         private async Task Client_MessageReceived(SocketMessage message)
         {
-            if (message.Content[0] == cfgar[1].ToCharArray()[0])
+            var user = message.Author as SocketGuildUser;
+            char prefix = cfgar[1].ToCharArray()[0];
+            foreach (var l in gset)
+            {
+                if (l[0] == user.Guild.Id.ToString())
+                {
+                    prefix = l[1].ToCharArray()[0];
+                }
+            }
+            if (message.Content[0] == prefix)
             {
                 var wordArray = message.Content.Split(' ');
                 
-                if (wordArray[0] == cfgar[1] + "ping")
+                if (wordArray[0] == prefix + "ping")
                 {
                     await message.Channel.SendMessageAsync("Pong");
+                }
+                else if (wordArray[0] == prefix + "prefix")
+                {
+                    foreach (var l in gset)
+                    {
+                        if (l[0] == user.Guild.Id.ToString())
+                        {
+                            l[1] = wordArray[1];
+                            await File.WriteAllLinesAsync("gcfg\\" + l[0] + ".cfg", l);
+                        }
+                    }
                 }
                 
             }
