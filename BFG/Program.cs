@@ -1,0 +1,92 @@
+﻿using System;
+using Discord;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Discord.Commands;
+using Discord.WebSocket;
+using Discord.Rest;
+using System.IO;
+namespace BFG
+{
+    class Program
+    {
+        DiscordSocketClient client = new DiscordSocketClient(new DiscordSocketConfig
+        {
+            LogLevel = LogSeverity.Debug,
+            MessageCacheSize = 100
+        });
+        public bool runn = true;
+        public string[] cfgar = new string[6];
+        public static void Main(string[] args)
+            => new Program().MainAsync().GetAwaiter().GetResult();
+
+        public async Task MainAsync()
+        {
+            
+            if (File.Exists("config.cfg"))
+            {
+                cfgar = await File.ReadAllLinesAsync("config.cfg");
+            }
+            else
+            {
+                cfgar[0] = "insert token here";
+                cfgar[1] = "&";
+                await File.WriteAllLinesAsync("config.cfg", cfgar);
+                Console.WriteLine("invalid config");
+                return;
+            }
+            client.Log += Client_Log;
+            client.MessageReceived += Client_MessageReceived;
+            await client.LoginAsync(TokenType.Bot, cfgar[0]);
+            await client.StartAsync();
+            
+            while (runn)
+            {
+                await Task.Delay(1);
+            }
+            await client.SetStatusAsync(UserStatus.Invisible);
+        }
+
+        private async Task Client_MessageReceived(SocketMessage message)
+        {
+            if (message.Content[0] == cfgar[1].ToCharArray()[0])
+            {
+                var wordArray = message.Content.Split(' ');
+                
+                if (wordArray[0] == cfgar[1] + "ping")
+                {
+                    await message.Channel.SendMessageAsync("Pong");
+                }
+                
+            }
+        }
+
+        private async Task Client_Log(LogMessage msg)
+        {
+            var cc = Console.ForegroundColor;
+            switch (msg.Severity)
+            {
+                case LogSeverity.Critical:
+                case LogSeverity.Error:
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    break;
+                case LogSeverity.Warning:
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    break;
+                case LogSeverity.Info:
+                    Console.ForegroundColor = ConsoleColor.White;
+                    break;
+                case LogSeverity.Verbose:
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    break;
+                case LogSeverity.Debug:
+                    Console.ForegroundColor = ConsoleColor.DarkGreen;
+                    break;
+            }
+            Console.WriteLine($"{DateTime.Now,-19} [{msg.Severity,8}] {msg.Source}: {msg.Message}");
+            //File.AppendAllText(@"Log.txt",$"{DateTime.Now,-19} [{msg.Severity,8}] {msg.Source}: {msg.Message}"+"\n");
+            Console.ForegroundColor = cc;
+        }
+    }
+}
