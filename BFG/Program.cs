@@ -20,6 +20,7 @@ namespace BFG
         public string[] cfgar = new string[6]; //default guild config
         public List<List<string>> gset = new List<List<string>>(); // guild settings
         public List<List<string>> udat = new List<List<string>>(); // user data
+        public List<ActionConfirm> actions = new List<ActionConfirm>();
         public string[] swears = new string[5000];
         public static void Main(string[] args)
             => new Program().MainAsync().GetAwaiter().GetResult();
@@ -54,7 +55,7 @@ namespace BFG
                 string[] g = File.ReadAllLines(f.FullName);
                 List<string> h = g.ToList();
                 gset.Add(h);
-                
+
             }
             dir = new DirectoryInfo("ucfg");
             FileInfo[] udir = dir.GetFiles();
@@ -68,14 +69,51 @@ namespace BFG
             client.Log += Client_Log;
             client.MessageReceived += Client_MessageReceived;
             client.GuildAvailable += Client_GuildAvailable;
+            client.ReactionAdded += Client_ReactionAdded;
             await client.LoginAsync(TokenType.Bot, cfgar[0]);
             await client.StartAsync();
-            
+
             while (runn)
             {
                 await Task.Delay(1);
             }
             await client.SetStatusAsync(UserStatus.Invisible);
+        }
+
+        private async Task Client_ReactionAdded(Cacheable<IUserMessage, ulong> msg, ISocketMessageChannel chan, SocketReaction reac)
+        {
+            try
+            {
+                var mes = await msg.GetOrDownloadAsync();
+                foreach (var a in actions)
+                {
+                    if (a.Id == mes.Id && reac.User.Value.Id == a.UId)
+                    {
+                        switch (a.Action)
+                        {
+                            case "kick":
+                                foreach (var u in a.Users)
+                                {
+                                    
+                                    await u.KickAsync(a.Reason);
+                                }
+                                break;
+                            case "ban":
+                                foreach (var u in a.Users)
+                                {
+                                    
+                                    await u.BanAsync(0, a.Reason);
+                                }
+                                break;
+                        }
+                        
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
 
         private async Task Client_GuildAvailable(SocketGuild guild)
@@ -94,7 +132,7 @@ namespace BFG
             gset.Add(h);
             try
             {
-                
+
                 await File.WriteAllLinesAsync("gcfg\\" + h[0] + ".cfg", h);
             }
             catch (Exception ex)
@@ -105,7 +143,7 @@ namespace BFG
 
         private async Task Client_MessageReceived(SocketMessage message)
         {
-            List<string> cguildset = new List<string>(); // current guild settings
+            int cguildseti = 0;// current guild settings
             bool swear = false;
             var wordArray = message.Content.Split(' '); // array of every word in messagew
             var user = message.Author as SocketGuildUser;
@@ -122,7 +160,7 @@ namespace BFG
             {
                 if (l[0] == user.Guild.Id.ToString())
                 {
-                    cguildset = l;
+                    cguildseti = gset.IndexOf(l);
                 }
             }
             foreach (var l in gset)
@@ -134,15 +172,15 @@ namespace BFG
             }
             if (message.Content[0] == prefix)
             {
-                
-                
+
+
                 if (wordArray[0] == prefix + "ping")
                 {
                     await message.Channel.SendMessageAsync("Pong");
                 }
                 else if (wordArray[0] == prefix + "prefix" && adperm)
                 {
-                    
+
                     foreach (var l in gset)
                     {
                         if (l[0] == user.Guild.Id.ToString())
@@ -179,9 +217,54 @@ namespace BFG
 
                     }
                 }
-                
+                else if (wordArray[0] == prefix + "kick" && adperm)
+                {
+                    string[] reason = message.Content.Split("\"");
+                    List<SocketGuildUser> h = new List<SocketGuildUser>();
+                    foreach (var u in message.MentionedUsers)
+                    {
+                        h.Add(u as SocketGuildUser);
+                    }
+                    var msg = await message.Channel.SendMessageAsync("React to this message to confirm");
+                    var check = new Emoji("✅");
+                    await msg.AddReactionAsync(check);
+                    var action = new ActionConfirm
+                    {
+                        Users = h.ToArray(),
+                        Reason = reason[1],
+                        Action = "kick",
+                        Id = msg.Id,
+                        UId = user.Id
+                        
+                    };
+                    actions.Add(action);
+                    
+                }
+                else if (wordArray[0] == prefix + "ban" && adperm)
+                {
+                    string[] reason = message.Content.Split("\"");
+                    List<SocketGuildUser> h = new List<SocketGuildUser>();
+                    foreach (var u in message.MentionedUsers)
+                    {
+                        h.Add(u as SocketGuildUser);
+                    }
+                    var msg = await message.Channel.SendMessageAsync("React to this message to confirm");
+                    var check = new Emoji("✅");
+                    await msg.AddReactionAsync(check);
+                    var action = new ActionConfirm
+                    {
+                        Users = h.ToArray(),
+                        Reason = reason[1],
+                        Action = "ban",
+                        Id = msg.Id,
+                        UId = user.Id
+
+                    };
+                    actions.Add(action);
+                }
+
             }
-            if (cguildset[2] == "true" && user != (SocketUser)client.CurrentUser)
+            if (gset[cguildseti][2] == "true" && user != (SocketUser)client.CurrentUser)
             {
                 foreach (var s in swears)
                 {
@@ -190,7 +273,7 @@ namespace BFG
                     {
                         swear = true;
                     }
-                    
+
                 }
                 if (swear)
                 {
@@ -202,12 +285,12 @@ namespace BFG
                         {
                             var ch = c as IMessageChannel;
                             await ch.SendMessageAsync(user.Mention + " said \"" + message.Content + "\"");
-                            
+
                         }
                     }
                 }
             }
-            
+
         }
 
         private async Task Client_Log(LogMessage msg)
@@ -236,5 +319,13 @@ namespace BFG
             //File.AppendAllText(@"Log.txt",$"{DateTime.Now,-19} [{msg.Severity,8}] {msg.Source}: {msg.Message}"+"\n");
             Console.ForegroundColor = cc;
         }
+    }
+    public class ActionConfirm
+    {
+        public SocketGuildUser[] Users { get; set; }
+        public string Reason { get; set; }
+        public string Action { get; set; }
+        public ulong Id { get; set; }
+        public ulong UId { get; set; }
     }
 }
