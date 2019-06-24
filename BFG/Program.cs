@@ -17,8 +17,9 @@ namespace BFG
             MessageCacheSize = 100
         });
         public bool runn = true;
-        public string[] cfgar = new string[6];
-        public List<List<string>> gset = new List<List<string>>();
+        public string[] cfgar = new string[6]; //default guild config
+        public List<List<string>> gset = new List<List<string>>(); // guild settings
+        public List<List<string>> udat = new List<List<string>>(); // user data
         public string[] swears = new string[5000];
         public static void Main(string[] args)
             => new Program().MainAsync().GetAwaiter().GetResult();
@@ -48,12 +49,21 @@ namespace BFG
             }
             DirectoryInfo dir = new DirectoryInfo("gcfg");
             FileInfo[] fdir = dir.GetFiles();
-            foreach (var f in fdir)
+            foreach (var f in fdir) // add guild settings to memory
             {
                 string[] g = File.ReadAllLines(f.FullName);
                 List<string> h = g.ToList();
                 gset.Add(h);
                 
+            }
+            dir = new DirectoryInfo("ucfg");
+            FileInfo[] udir = dir.GetFiles();
+            foreach (var f in udir) // add user data to memory
+            {
+                string[] g = File.ReadAllLines(f.FullName);
+                List<string> h = g.ToList();
+                udat.Add(h);
+
             }
             client.Log += Client_Log;
             client.MessageReceived += Client_MessageReceived;
@@ -95,11 +105,19 @@ namespace BFG
 
         private async Task Client_MessageReceived(SocketMessage message)
         {
-            List<string> cguildset = new List<string>();
+            List<string> cguildset = new List<string>(); // current guild settings
             bool swear = false;
-            var wordArray = message.Content.Split(' ');
+            var wordArray = message.Content.Split(' '); // array of every word in messagew
             var user = message.Author as SocketGuildUser;
-            char prefix = cfgar[1].ToCharArray()[0];
+            char prefix = cfgar[1][0];
+            bool adperm = false; // admin perms
+            foreach (var r in user.Roles)
+            {
+                if (r.Permissions.Has(GuildPermission.Administrator))
+                {
+                    adperm = true;
+                }
+            }
             foreach (var l in gset)
             {
                 if (l[0] == user.Guild.Id.ToString())
@@ -111,7 +129,7 @@ namespace BFG
             {
                 if (l[0] == user.Guild.Id.ToString())
                 {
-                    prefix = l[1].ToCharArray()[0];
+                    prefix = l[1][0];
                 }
             }
             if (message.Content[0] == prefix)
@@ -122,7 +140,7 @@ namespace BFG
                 {
                     await message.Channel.SendMessageAsync("Pong");
                 }
-                else if (wordArray[0] == prefix + "prefix")
+                else if (wordArray[0] == prefix + "prefix" && adperm)
                 {
                     
                     foreach (var l in gset)
@@ -134,6 +152,33 @@ namespace BFG
                         }
                     }
                 }
+                else if (wordArray[0] == prefix + "settings" && adperm)
+                {
+                    switch (wordArray[1])
+                    {
+                        case "prefix":
+                            foreach (var l in gset)
+                            {
+                                if (l[0] == user.Guild.Id.ToString())
+                                {
+                                    l[1] = wordArray[2];
+                                    await File.WriteAllLinesAsync("gcfg\\" + l[0] + ".cfg", l);
+                                }
+                            }
+                            break;
+                        case "antiswear":
+                            foreach (var l in gset)
+                            {
+                                if (l[0] == user.Guild.Id.ToString())
+                                {
+                                    l[2] = wordArray[2];
+                                    await File.WriteAllLinesAsync("gcfg\\" + l[0] + ".cfg", l);
+                                }
+                            }
+                            break;
+
+                    }
+                }
                 
             }
             if (cguildset[2] == "true")
@@ -141,14 +186,17 @@ namespace BFG
                 foreach (var s in swears)
                 {
                     var msgl = wordArray.ToList();
-                    if (msgl.Contains(s))
+                    if (msgl.Contains(s.ToLower()))
                     {
                         swear = true;
                     }
+                    
                 }
                 if (swear)
                 {
-                    await message.Channel.SendMessageAsync("No swearing " + user.Mention);
+                    await message.DeleteAsync();
+                    await user.SendMessageAsync("No swearing");
+                    
                 }
             }
             
