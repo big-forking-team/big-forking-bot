@@ -19,11 +19,13 @@ namespace BFG
         public bool runn = true;
         public string[] cfgar = new string[6];
         public List<List<string>> gset = new List<List<string>>();
+        public string[] swears = new string[5000];
         public static void Main(string[] args)
             => new Program().MainAsync().GetAwaiter().GetResult();
 
         public async Task MainAsync()
         {
+            swears = await File.ReadAllLinesAsync("swears.txt");
             if (!Directory.Exists("gcfg"))
             {
                 Directory.CreateDirectory("gcfg");
@@ -78,6 +80,7 @@ namespace BFG
             List<string> h = new List<string>();
             h.Add(guild.Id.ToString());
             h.Add(cfgar[1]);
+            h.Add("false");
             gset.Add(h);
             try
             {
@@ -92,8 +95,18 @@ namespace BFG
 
         private async Task Client_MessageReceived(SocketMessage message)
         {
+            List<string> cguildset = new List<string>();
+            bool swear = false;
+            var wordArray = message.Content.Split(' ');
             var user = message.Author as SocketGuildUser;
             char prefix = cfgar[1].ToCharArray()[0];
+            foreach (var l in gset)
+            {
+                if (l[0] == user.Guild.Id.ToString())
+                {
+                    cguildset = l;
+                }
+            }
             foreach (var l in gset)
             {
                 if (l[0] == user.Guild.Id.ToString())
@@ -103,7 +116,7 @@ namespace BFG
             }
             if (message.Content[0] == prefix)
             {
-                var wordArray = message.Content.Split(' ');
+                
                 
                 if (wordArray[0] == prefix + "ping")
                 {
@@ -111,6 +124,7 @@ namespace BFG
                 }
                 else if (wordArray[0] == prefix + "prefix")
                 {
+                    
                     foreach (var l in gset)
                     {
                         if (l[0] == user.Guild.Id.ToString())
@@ -122,6 +136,22 @@ namespace BFG
                 }
                 
             }
+            if (cguildset[2] == "true")
+            {
+                foreach (var s in swears)
+                {
+                    var msgl = wordArray.ToList();
+                    if (msgl.Contains(s))
+                    {
+                        swear = true;
+                    }
+                }
+                if (swear)
+                {
+                    await message.Channel.SendMessageAsync("No swearing " + user.Mention);
+                }
+            }
+            
         }
 
         private async Task Client_Log(LogMessage msg)
