@@ -181,7 +181,7 @@ namespace BFG
                 }
                 
             }
-            if (cguildset[2] == "true")
+            if (cguildset[2] == "true" && user != (SocketUser)client.CurrentUser)
             {
                 foreach (var s in swears)
                 {
@@ -196,7 +196,15 @@ namespace BFG
                 {
                     await message.DeleteAsync();
                     await user.SendMessageAsync("No swearing");
-                    
+                    foreach (var c in user.Guild.Channels)
+                    {
+                        if (c.Name.ToLower() == "log")
+                        {
+                            var ch = c as IMessageChannel;
+                            await ch.SendMessageAsync(user.Mention + " said \"" + message.Content + "\"");
+                            
+                        }
+                    }
                 }
             }
             
