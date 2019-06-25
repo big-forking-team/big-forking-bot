@@ -66,10 +66,15 @@ namespace BFG
                 udat.Add(h);
 
             }
+            
+            udat.Add(new List<string> { "" });
             client.Log += Client_Log;
             client.MessageReceived += Client_MessageReceived;
             client.GuildAvailable += Client_GuildAvailable;
             client.ReactionAdded += Client_ReactionAdded;
+            client.UserBanned += Client_UserBanned;
+            client.UserJoined += Client_UserJoined;
+            client.UserUnbanned += Client_UserUnbanned;
             await client.LoginAsync(TokenType.Bot, cfgar[0]);
             await client.StartAsync();
 
@@ -78,6 +83,76 @@ namespace BFG
                 await Task.Delay(1);
             }
             await client.SetStatusAsync(UserStatus.Invisible);
+        }
+
+        private async Task Client_UserUnbanned(SocketUser user, SocketGuild guild)
+        {
+            foreach (var i in udat)
+            {
+                if (i[0] == user.Id.ToString())
+                {
+                    i.Remove(guild.Id.ToString());
+                }
+            }
+        }
+
+        private async Task Client_UserJoined(SocketGuildUser user)
+        {
+            foreach (var l in udat)
+            {
+                if (l.Contains(user.Id.ToString()))
+                {
+                    int c = 0;
+                    foreach (var e in l)
+                    {
+                        foreach (var g in gset)
+                        {
+                            if (g.Contains(e))
+                            {
+                                c++;
+                            }
+                        }
+                    }
+                    if (c > 2)
+                    {
+                        await user.BanAsync(0, "global ban");
+                    }
+                }
+                return;
+            }
+        }
+
+        private async Task Client_UserBanned(SocketUser user, SocketGuild guild)
+        {
+            foreach (var l in udat)
+            {
+                if (l.Contains(user.Id.ToString()))
+                {
+                    
+                    int j = udat.IndexOf(l);
+                    
+                    if (udat[j].Contains(guild.Id.ToString()))
+                    {
+                        return;
+                    }
+                    udat[j].Add(guild.Id.ToString());
+                    await File.WriteAllLinesAsync("ucfg\\" + user.Id + ".cfg" , udat[j]);
+                    return;
+                }
+
+            }
+            
+                
+            List<string> h = new List<string>();
+            h.Add(user.Id.ToString());
+            h.AddRange(new List<string> { "", "", "", "", "", "", "", "", });
+            h.Add("bans");
+            h.Add(guild.Id.ToString());
+
+            udat.Add(h);
+            int i = udat.IndexOf(h);
+            await File.WriteAllLinesAsync("ucfg\\" + user.Id + ".cfg", udat[i]);
+            
         }
 
         private async Task Client_ReactionAdded(Cacheable<IUserMessage, ulong> msg, ISocketMessageChannel chan, SocketReaction reac)
