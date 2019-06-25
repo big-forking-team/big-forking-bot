@@ -233,7 +233,7 @@ namespace BFG
             bool adperm = false; // admin perms
             foreach (var r in user.Roles)
             {
-                if (r.Permissions.Has(GuildPermission.Administrator))
+                if (r.Permissions.Has(GuildPermission.Administrator) || user.Guild.OwnerId == user.Id)
                 {
                     adperm = true;
                 }
