@@ -135,6 +135,7 @@ namespace BFG
             h.Add(guild.Id.ToString());
             h.Add(cfgar[1]);
             h.Add("false");
+
             gset.Add(h);
             try
             {
