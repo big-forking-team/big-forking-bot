@@ -7,6 +7,8 @@ using Discord.Commands;
 using Discord.WebSocket;
 using Discord.Rest;
 using System.IO;
+using Newtonsoft.Json;
+
 namespace BFG
 {
     class Program
@@ -18,8 +20,8 @@ namespace BFG
         });
         public bool runn = true;
         public string[] cfgar = new string[6]; //default guild config
-        public List<List<string>> gset = new List<List<string>>(); // guild settings
-        public List<List<string>> udat = new List<List<string>>(); // user data
+        public List<GuildConfig> gset = new List<GuildConfig>(); // guild settings
+        public List<UserData> udat = new List<UserData>(); // user data
         public List<ActionConfirm> actions = new List<ActionConfirm>();
         public string[] swears = new string[5000];
         public static void Main(string[] args)
@@ -52,22 +54,36 @@ namespace BFG
             FileInfo[] fdir = dir.GetFiles();
             foreach (var f in fdir) // add guild settings to memory
             {
-                string[] g = File.ReadAllLines(f.FullName);
-                List<string> h = g.ToList();
-                gset.Add(h);
+
+                GuildConfig g = JsonConvert.DeserializeObject<GuildConfig>(File.ReadAllText(f.FullName));
+                gset.Add(g);
 
             }
             dir = new DirectoryInfo("ucfg");
             FileInfo[] udir = dir.GetFiles();
             foreach (var f in udir) // add user data to memory
             {
-                string[] g = File.ReadAllLines(f.FullName);
-                List<string> h = g.ToList();
-                udat.Add(h);
+                
+                UserData u = JsonConvert.DeserializeObject<UserData>(File.ReadAllText(f.FullName));
+                udat.Add(u);
 
             }
             
-            udat.Add(new List<string> { "" });
+            if (udat.ToArray().Length == 0)
+            {
+                udat.Add
+                    (
+                    new UserData
+                    {
+                        Id = 0,
+                        Bans = new List<ulong>
+                        {
+                            0
+                        }
+                        
+                    }
+                    );
+            }
             client.Log += Client_Log;
             client.MessageReceived += Client_MessageReceived;
             client.GuildAvailable += Client_GuildAvailable;
@@ -89,9 +105,10 @@ namespace BFG
         {
             foreach (var i in udat)
             {
-                if (i[0] == user.Id.ToString())
+                if (i.Id == user.Id)
                 {
-                    i.Remove(guild.Id.ToString());
+                    i.Bans.Remove(guild.Id);
+                    await File.WriteAllTextAsync("ucfg\\" + user.Id + ".json", JsonConvert.SerializeObject(udat[udat.IndexOf(i)]));
                 }
             }
         }
@@ -100,20 +117,10 @@ namespace BFG
         {
             foreach (var l in udat)
             {
-                if (l.Contains(user.Id.ToString()))
+                if (l.Id == user.Id)
                 {
-                    int c = 0;
-                    foreach (var e in l)
-                    {
-                        foreach (var g in gset)
-                        {
-                            if (g.Contains(e))
-                            {
-                                c++;
-                            }
-                        }
-                    }
-                    if (c > 2)
+                    
+                    if (l.Bans.ToArray().Length > 2)
                     {
                         await user.BanAsync(0, "global ban");
                     }
@@ -126,32 +133,38 @@ namespace BFG
         {
             foreach (var l in udat)
             {
-                if (l.Contains(user.Id.ToString()))
+                if (l.Id == user.Id)
                 {
                     
                     int j = udat.IndexOf(l);
                     
-                    if (udat[j].Contains(guild.Id.ToString()))
+                    if (udat[j].Bans.Contains(guild.Id))
                     {
                         return;
                     }
-                    udat[j].Add(guild.Id.ToString());
-                    await File.WriteAllLinesAsync("ucfg\\" + user.Id + ".cfg" , udat[j]);
+                    udat[j].Bans.Add(guild.Id);
+                    var us = new UserData
+                    {
+                        Id = user.Id,
+                        Bans = udat[j].Bans
+                    };
+                    await File.WriteAllTextAsync("ucfg\\" + user.Id + ".json" , JsonConvert.SerializeObject(us));
                     return;
                 }
 
             }
-            
-                
-            List<string> h = new List<string>();
-            h.Add(user.Id.ToString());
-            h.AddRange(new List<string> { "", "", "", "", "", "", "", "", });
-            h.Add("bans");
-            h.Add(guild.Id.ToString());
 
-            udat.Add(h);
-            int i = udat.IndexOf(h);
-            await File.WriteAllLinesAsync("ucfg\\" + user.Id + ".cfg", udat[i]);
+
+            var u = new UserData
+            {
+                Id = user.Id,
+                Bans = new List<ulong> { guild.Id }
+            };
+            
+
+            udat.Add(u);
+            int i = udat.IndexOf(u);
+            await File.WriteAllTextAsync("ucfg\\" + user.Id + ".json", JsonConvert.SerializeObject(udat[i]));
             
         }
 
@@ -201,21 +214,25 @@ namespace BFG
         {
             foreach (var l in gset)
             {
-                if (l[0] == guild.Id.ToString())
+                if (l.Id == guild.Id)
                 {
                     return;
                 }
             }
-            List<string> h = new List<string>();
-            h.Add(guild.Id.ToString());
-            h.Add(cfgar[1]);
-            h.Add("false");
+            var g = new GuildConfig
+            {
+                Id = guild.Id,
+                prefix = '&',
+                AntiSwear = false,
+                GlobalBan = true
 
-            gset.Add(h);
+            };
+
+            gset.Add(g);
             try
             {
 
-                await File.WriteAllLinesAsync("gcfg\\" + h[0] + ".cfg", h);
+                await File.WriteAllTextAsync("gcfg\\" + guild.Id.ToString() + ".json", JsonConvert.SerializeObject(g));
             }
             catch (Exception ex)
             {
@@ -240,16 +257,16 @@ namespace BFG
             }
             foreach (var l in gset)
             {
-                if (l[0] == user.Guild.Id.ToString())
+                if (l.Id == user.Guild.Id)
                 {
                     cguildseti = gset.IndexOf(l);
                 }
             }
             foreach (var l in gset)
             {
-                if (l[0] == user.Guild.Id.ToString())
+                if (l.Id == user.Guild.Id)
                 {
-                    prefix = l[1][0];
+                    prefix = l.prefix;
                 }
             }
             if (message.Content[0] == prefix)
@@ -265,13 +282,22 @@ namespace BFG
 
                     foreach (var l in gset)
                     {
-                        if (l[0] == user.Guild.Id.ToString())
+                        if (l.Id == user.Guild.Id)
                         {
-                            l[1] = wordArray[1];
-                            await File.WriteAllLinesAsync("gcfg\\" + l[0] + ".cfg", l);
+                            l.prefix = wordArray[1].ToCharArray()[0];
+                            var g = new GuildConfig
+                            {
+                                Id = l.Id,
+                                prefix = wordArray[1].ToCharArray()[0],
+                                AntiSwear = l.AntiSwear,
+                                GlobalBan = l.GlobalBan
+                            };
+                            await File.WriteAllTextAsync("gcfg\\" + l.Id + ".json", JsonConvert.SerializeObject(g));
                         }
+                        
                     }
                 }
+            
                 else if (wordArray[0] == prefix + "settings" && adperm)
                 {
                     switch (wordArray[1])
@@ -279,20 +305,42 @@ namespace BFG
                         case "prefix":
                             foreach (var l in gset)
                             {
-                                if (l[0] == user.Guild.Id.ToString())
+                                if (l.Id == user.Guild.Id)
                                 {
-                                    l[1] = wordArray[2];
-                                    await File.WriteAllLinesAsync("gcfg\\" + l[0] + ".cfg", l);
+                                    l.prefix = wordArray[2].ToCharArray()[0];
+                                    var g = new GuildConfig
+                                    {
+                                        Id = l.Id,
+                                        prefix = l.prefix,
+                                        AntiSwear = l.AntiSwear,
+                                        GlobalBan = l.GlobalBan
+                                    };
+                                    await File.WriteAllTextAsync("gcfg\\" + l.Id + ".json", JsonConvert.SerializeObject(g));
                                 }
                             }
                             break;
                         case "antiswear":
                             foreach (var l in gset)
                             {
-                                if (l[0] == user.Guild.Id.ToString())
+                                if (l.Id == user.Guild.Id)
                                 {
-                                    l[2] = wordArray[2];
-                                    await File.WriteAllLinesAsync("gcfg\\" + l[0] + ".cfg", l);
+                                    bool s = false;
+                                    switch (wordArray[2])
+                                    {
+                                        case "true":
+                                            s = true;
+                                            break;
+                                            
+                                    }
+                                    l.AntiSwear = s;
+                                    var g = new GuildConfig
+                                    {
+                                        Id = l.Id,
+                                        prefix = l.prefix,
+                                        AntiSwear = l.AntiSwear,
+                                        GlobalBan = l.GlobalBan
+                                    };
+                                    await File.WriteAllTextAsync("gcfg\\" + l.Id + ".json", JsonConvert.SerializeObject(g));
                                 }
                             }
                             break;
@@ -346,7 +394,7 @@ namespace BFG
                 }
 
             }
-            if (gset[cguildseti][2] == "true" && user != (SocketUser)client.CurrentUser)
+            if (gset[cguildseti].AntiSwear && user != (SocketUser)client.CurrentUser)
             {
                 foreach (var s in swears)
                 {
@@ -409,5 +457,17 @@ namespace BFG
         public string Action { get; set; }
         public ulong Id { get; set; }
         public ulong UId { get; set; }
+    }
+    public class GuildConfig
+    {
+        public ulong Id { get; set; }
+        public char prefix { get; set; }
+        public bool AntiSwear { get; set; }
+        public bool GlobalBan { get; set; }
+    }
+    public class UserData
+    {
+        public ulong Id { get; set; }
+        public List<ulong> Bans { get; set; }
     }
 }
