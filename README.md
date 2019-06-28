@@ -9,5 +9,5 @@ Ban command
 prefix command
 toggleable anti swear
 # Global Ban List
-if you are banned from 3 or more servers you will be immediately banned from all servers running the bot
+if you are banned from 3 or more servers you will be immediately banned from all servers running the bot,
 this can be enabled or disabled in the server config
