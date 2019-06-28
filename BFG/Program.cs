@@ -24,6 +24,7 @@ namespace BFG
         public List<UserData> udat = new List<UserData>(); // user data
         public List<ActionConfirm> actions = new List<ActionConfirm>();
         public string[] swears = new string[5000];
+        public GlobalBanList GlobalBanList = new GlobalBanList();
         public static void Main(string[] args)
             => new Program().MainAsync().GetAwaiter().GetResult();
 
@@ -68,7 +69,11 @@ namespace BFG
                 udat.Add(u);
 
             }
-            
+            if (!File.Exists("GlobalBanList.json"))
+            {
+                File.WriteAllText("GlobalBanList.json", JsonConvert.SerializeObject(GlobalBanList));
+
+            }
             if (udat.ToArray().Length == 0)
             {
                 udat.Add
@@ -146,17 +151,9 @@ namespace BFG
 
         private async Task Client_UserJoined(SocketGuildUser user)
         {
-            foreach (var l in udat)
+            if (GlobalBanList.Bans.Contains(user.Id))
             {
-                if (l.Id == user.Id)
-                {
-                    
-                    if (l.Bans.ToArray().Length > 2)
-                    {
-                        await user.BanAsync(0, "global ban");
-                    }
-                }
-                return;
+                await user.BanAsync(0, "Globally Banned");
             }
         }
 
@@ -180,6 +177,11 @@ namespace BFG
                         Bans = udat[j].Bans
                     };
                     await File.WriteAllTextAsync("ucfg\\" + user.Id + ".json" , JsonConvert.SerializeObject(us));
+                    if (udat[j].Bans.ToArray().Length > 2)
+                    {
+                        GlobalBanList.Bans.Add(user.Id);
+                        File.WriteAllText("GlobalBanList.json", JsonConvert.SerializeObject(GlobalBanList));
+                    }
                     return;
                 }
 
@@ -549,6 +551,10 @@ namespace BFG
     public class UserData
     {
         public ulong Id { get; set; }
+        public List<ulong> Bans { get; set; }
+    }
+    public class GlobalBanList
+    {
         public List<ulong> Bans { get; set; }
     }
 }
