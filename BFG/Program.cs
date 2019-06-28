@@ -344,6 +344,28 @@ namespace BFG
                                 }
                             }
                             break;
+                        case "GlobalBan":
+                            foreach (var l in gset)
+                            {
+                                if (l.Id == user.Guild.Id)
+                                {
+                                    bool s = false;
+                                    if (wordArray[2] == "true")
+                                    {
+                                        s = true;
+                                    }
+                                    l.GlobalBan = s;
+                                    var g = new GuildConfig
+                                    {
+                                        Id = l.Id,
+                                        prefix = l.prefix,
+                                        AntiSwear = l.AntiSwear,
+                                        GlobalBan = l.GlobalBan
+                                    };
+                                    await File.WriteAllTextAsync("gcfg\\" + l.Id + ".json", JsonConvert.SerializeObject(g));
+                                }
+                            }
+                            break;
 
                     }
                 }
