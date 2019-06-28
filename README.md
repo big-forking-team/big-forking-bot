@@ -2,7 +2,7 @@
 The Discord bot we've made for Hack Week! :D
 
 # Features
-- Currently has a global ban List (read more below) \n
+- Currently has a global ban List (read more below)
 - server configs for custom prefixes
 - Kick command
 - Ban command
