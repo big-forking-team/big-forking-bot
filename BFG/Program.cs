@@ -169,9 +169,17 @@ namespace BFG
 
         private async Task Client_UserUnbanned(SocketUser user, SocketGuild guild)
         {
+            bool d = false;
             foreach (var i in udat)
             {
-                if (i.Id == user.Id)
+                foreach (var b in GlobalBanList.Bans)
+                {
+                    if (b == user.Id)
+                    {
+                        d = true;
+                    }
+                }
+                if (i.Id == user.Id && !d)
                 {
                     i.Bans.Remove(guild.Id);
                     await File.WriteAllTextAsync("ucfg\\" + user.Id + ".json", JsonConvert.SerializeObject(udat[udat.IndexOf(i)]));
