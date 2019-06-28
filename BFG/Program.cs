@@ -24,7 +24,7 @@ namespace BFG
         public List<UserData> udat = new List<UserData>(); // user data
         public List<ActionConfirm> actions = new List<ActionConfirm>();
         public string[] swears = new string[5000];
-        public GlobalBanList GlobalBanList = new GlobalBanList();
+        public GlobalBanList GlobalBanList = new GlobalBanList() { Bans = new List<ulong> { 0 } };
         public static void Main(string[] args)
             => new Program().MainAsync().GetAwaiter().GetResult();
 
@@ -74,6 +74,11 @@ namespace BFG
                 File.WriteAllText("GlobalBanList.json", JsonConvert.SerializeObject(GlobalBanList));
 
             }
+            else
+            {
+                GlobalBanList = JsonConvert.DeserializeObject<GlobalBanList>(File.ReadAllText("GlobalBanList.json"));
+                
+            }
             if (udat.ToArray().Length == 0)
             {
                 udat.Add
@@ -105,6 +110,31 @@ namespace BFG
                 await Task.Delay(1);
             }
             await client.SetStatusAsync(UserStatus.Invisible);
+        }
+
+        private async Task GlobalBanListUpdate(SocketUser user)
+        {
+            foreach (var g in client.Guilds)
+            {
+                bool cont = true;
+                foreach (var gg in gset)
+                {
+                    if (g.Id == gg.Id)
+                    {
+                        if (gg.GlobalBan == false)
+                        {
+                            cont = false;
+                        }
+                    }
+                }
+                foreach (var u in g.Users)
+                {
+                    if (u.Id == user.Id && cont)
+                    {
+                        await u.BanAsync(0, "Globally Banned");
+                    }
+                }
+            }
         }
 
         private async Task Client_JoinedGuild(SocketGuild guild)
@@ -151,7 +181,18 @@ namespace BFG
 
         private async Task Client_UserJoined(SocketGuildUser user)
         {
-            if (GlobalBanList.Bans.Contains(user.Id))
+            bool cont = true;
+            foreach (var gg in gset)
+            {
+                if (user.Guild.Id == gg.Id)
+                {
+                    if (gg.GlobalBan == false)
+                    {
+                        cont = false;
+                    }
+                }
+            }
+            if (GlobalBanList.Bans.Contains(user.Id) && cont)
             {
                 await user.BanAsync(0, "Globally Banned");
             }
@@ -181,6 +222,7 @@ namespace BFG
                     {
                         GlobalBanList.Bans.Add(user.Id);
                         File.WriteAllText("GlobalBanList.json", JsonConvert.SerializeObject(GlobalBanList));
+                        GlobalBanListUpdate(user);
                     }
                     return;
                 }
