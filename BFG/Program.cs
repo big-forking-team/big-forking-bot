@@ -25,6 +25,7 @@ namespace BFG
         public List<ActionConfirm> actions = new List<ActionConfirm>();
         public string[] swears = new string[5000];
         public GlobalBanList GlobalBanList = new GlobalBanList() { Bans = new List<ulong> { 0 } };
+        public List<GuildSetup> gsetu = new List<GuildSetup>();
         public static void Main(string[] args)
             => new Program().MainAsync().GetAwaiter().GetResult();
 
@@ -331,6 +332,61 @@ namespace BFG
             var user = message.Author as SocketGuildUser;
             char prefix = cfgar[1][0];
             bool adperm = false; // admin perms
+            foreach (var ggg in gsetu)
+            {
+                if (ggg.User == user)
+                {
+                    switch (ggg.Stage)
+                    {
+                        case 1:
+                            gset[ggg.GCfgIndex].prefix = message.Content[0];
+                            int t = gsetu.IndexOf(ggg);
+                            gsetu[t].Stage = 2;
+                            await message.Channel.SendMessageAsync("Would you like to use anti swear (yes/no)");
+                            break;
+                        case 2:
+                            if (message.Content == "yes")
+                            {
+                                gset[ggg.GCfgIndex].AntiSwear = true;
+                            }
+                            else if (message.Content == "no")
+                            {
+                                gset[ggg.GCfgIndex].AntiSwear = false;
+                            }
+                            else
+                            {
+                                await message.Channel.SendMessageAsync("Unrecognized Answer, please try again");
+                                return;
+                            }
+                            int tt = gsetu.IndexOf(ggg);
+                            gsetu[tt].Stage = 3;
+                            await message.Channel.SendMessageAsync("Would you like to use Global Banning (yes/no)");
+                            break;
+                        case 3:
+                            if (message.Content == "yes")
+                            {
+                                gset[ggg.GCfgIndex].GlobalBan = true;
+                            }
+                            else if (message.Content == "no")
+                            {
+                                gset[ggg.GCfgIndex].GlobalBan = false;
+                            }
+                            else
+                            {
+                                await message.Channel.SendMessageAsync("Unrecognized Answer, please try again");
+                                return;
+                            }
+                            int ttt = gsetu.IndexOf(ggg);
+                            //gsetu[ttt].Stage = 4;
+                            await message.Channel.SendMessageAsync("Done");
+                            await File.WriteAllTextAsync("gcfg\\" + gset[ggg.GCfgIndex].Id + ".json", JsonConvert.SerializeObject(gset[ggg.GCfgIndex]));
+                            gsetu.Remove(ggg);
+                            break;
+                    }
+                    return;
+                        
+                }
+            }
             foreach (var r in user.Roles)
             {
                 if (r.Permissions.Has(GuildPermission.Administrator) || user.Guild.OwnerId == user.Id)
@@ -385,7 +441,7 @@ namespace BFG
                 {
                     switch (wordArray[1])
                     {
-                        case "prefix":
+                        case "Prefix":
                             foreach (var l in gset)
                             {
                                 if (l.Id == user.Guild.Id)
@@ -402,7 +458,7 @@ namespace BFG
                                 }
                             }
                             break;
-                        case "antiswear":
+                        case "AntiSwear":
                             foreach (var l in gset)
                             {
                                 if (l.Id == user.Guild.Id)
@@ -526,6 +582,22 @@ namespace BFG
                     }
 
                 }
+                else if (wordArray[0] == prefix + "setup" && user.Guild.OwnerId == user.Id)
+                {
+                    await message.Channel.SendMessageAsync("What would you like the bot prefix to be (1 character)");
+                    var s = new GuildSetup
+                    {
+                        User = user,
+                        Guild = user.Guild,
+                        GCfgIndex = cguildseti,
+                        Stage = 1
+                    };
+                    gsetu.Add(s);
+                }
+                else if (wordArray[0] == prefix + "help")
+                {
+                    await message.Channel.SendMessageAsync("PLease see our Github page for more info: https://github.com/big-forking-team/big-forking-bot");
+                }
                 if (gset[cguildseti].AntiSwear && user != (SocketUser)client.CurrentUser)
                 {
                     foreach (var s in swears)
@@ -606,5 +678,12 @@ namespace BFG
     public class GlobalBanList
     {
         public List<ulong> Bans { get; set; }
+    }
+    public class GuildSetup
+    {
+        public SocketUser User { get; set; }
+        public SocketGuild Guild { get; set; }
+        public int GCfgIndex { get; set; }
+        public int Stage { get; set; }
     }
 }
