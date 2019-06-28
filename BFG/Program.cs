@@ -325,10 +325,10 @@ namespace BFG
                             };
                             await File.WriteAllTextAsync("gcfg\\" + l.Id + ".json", JsonConvert.SerializeObject(g));
                         }
-                        
+
                     }
                 }
-            
+
                 else if (wordArray[0] == prefix + "settings" && adperm)
                 {
                     switch (wordArray[1])
@@ -361,7 +361,7 @@ namespace BFG
                                         case "true":
                                             s = true;
                                             break;
-                                            
+
                                     }
                                     l.AntiSwear = s;
                                     var g = new GuildConfig
@@ -418,10 +418,10 @@ namespace BFG
                         Action = "kick",
                         Id = msg.Id,
                         UId = user.Id
-                        
+
                     };
                     actions.Add(action);
-                    
+
                 }
                 else if (wordArray[0] == prefix + "ban" && adperm)
                 {
@@ -445,18 +445,46 @@ namespace BFG
                     };
                     actions.Add(action);
                 }
-
-            }
-            if (gset[cguildseti].AntiSwear && user != (SocketUser)client.CurrentUser)
-            {
-                foreach (var s in swears)
+                else if (wordArray[0] == prefix + "unban" && adperm)
                 {
-                    var msgl = wordArray.ToList();
-                    if (msgl.Contains(s.ToLower()))
+                    var g = user.Guild as SocketGuild;
+                    IUser us = user;
+                    var bans = await user.Guild.GetBansAsync();
+                    foreach (var b in bans)
                     {
-                        swear = true;
+                        if (b.User.Id.ToString() == wordArray[1])
+                        {
+                            us = b.User;
+                        }
+                    }
+                    try
+                    { 
+                        await g.RemoveBanAsync(us);
+                    }
+                    catch
+                    {
+
+                    }
+                    foreach (var u in udat)
+                    {
+                        if (u.Id.ToString() == wordArray[1])
+                        {
+                            u.Bans.Remove(user.Guild.Id);
+                        }
                     }
 
+                }
+                if (gset[cguildseti].AntiSwear && user != (SocketUser)client.CurrentUser)
+                {
+                    foreach (var s in swears)
+                    {
+                        var msgl = wordArray.ToList();
+                        if (msgl.Contains(s.ToLower()))
+                        {
+                            swear = true;
+                        }
+
+                    }
                 }
                 if (swear)
                 {
