@@ -91,6 +91,7 @@ namespace BFG
             client.UserBanned += Client_UserBanned;
             client.UserJoined += Client_UserJoined;
             client.UserUnbanned += Client_UserUnbanned;
+            client.JoinedGuild += Client_JoinedGuild;
             await client.LoginAsync(TokenType.Bot, cfgar[0]);
             await client.StartAsync();
 
@@ -99,6 +100,36 @@ namespace BFG
                 await Task.Delay(1);
             }
             await client.SetStatusAsync(UserStatus.Invisible);
+        }
+
+        private async Task Client_JoinedGuild(SocketGuild guild)
+        {
+            foreach (var l in gset)
+            {
+                if (l.Id == guild.Id)
+                {
+                    return;
+                }
+            }
+            var g = new GuildConfig
+            {
+                Id = guild.Id,
+                prefix = '&',
+                AntiSwear = false,
+                GlobalBan = true
+
+            };
+
+            gset.Add(g);
+            try
+            {
+
+                await File.WriteAllTextAsync("gcfg\\" + guild.Id.ToString() + ".json", JsonConvert.SerializeObject(g));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
 
         private async Task Client_UserUnbanned(SocketUser user, SocketGuild guild)
